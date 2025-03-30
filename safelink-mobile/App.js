@@ -88,7 +88,7 @@ const App = () => {
             </Stack.Screen>
           ) : (
             <Stack.Screen name="Main" component={MainTabs} />
-        )}
+         )}
         </Stack.Navigator>
       </NavigationContainer>
     </ChecklistProvider>

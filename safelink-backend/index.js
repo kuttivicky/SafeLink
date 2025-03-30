@@ -182,7 +182,7 @@ app.post("/login", async (req, res) => {
 });
 
 app.post("/userinfo/:userid", async (req, res) => {
-  const userId = req.params.userId; // In our case, userId is the email.
+  const userId = req.params.userid; // In our case, userId is the email.
   try {
     const userSnapshot = await db.collection('users')
       .where('email', '==', userId)
@@ -198,12 +198,85 @@ app.post("/userinfo/:userid", async (req, res) => {
 
     res.status(200).json({
       name: userData.name,
-      email: userData.email
+      email: userData.email,
+      phone: userData.phone,
+      consent: userData.consent,
     });
   } catch (error) {
     console.error('Error retrieving user info:', error);
     res.status(500).json({ error: error.message });
   }
 });
+
+app.get('/patients', async (req, res) => {
+  const { disease } = req.query;
+
+  try {
+    const patientsRef = db.collection('checklist_responses');
+
+    const snapshot = await patientsRef
+      .where('patientInfo', '>=', disease)
+      .where('patientInfo', '<=', disease + '\uf8ff')
+      .get();
+
+    const results = snapshot.docs.map(doc => doc.data());
+    res.json(results);
+
+  } catch (error) {
+    console.error('Firebase query failed:', error);
+    res.status(500).json({ error: 'Failed to fetch patients' });
+  }
+});
+
+app.get('/patients/consent', async (req, res) => {
+  const { email } = req.query;
+  console.log('Email:', email);
+  const userSnapshot = await db.collection('users').where('email', '==', email).limit(1).get(); // example lookup
+
+  if (userSnapshot.empty) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const userDoc = userSnapshot.docs[0];
+  const userData = userDoc.data();
+  
+  if (userData.consent) {
+    res.json({ success: true, consent: patient.consent, email: userData.email, name: userData.name, phone: userData.phone });
+  } else {
+    res.status(404).json({ success: false, message: 'Patient not found' });
+  }
+});
+
+// PATCH /userinfo/:email/consent
+app.patch('/userinfo/:email/consent', async (req, res) => {
+  const email = decodeURIComponent(req.params.email);
+  const { consent } = req.body;
+
+  try {
+    const snapshot = await db.collection('users')
+      .where('email', '==', email)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const docId = snapshot.docs[0].id;
+    await db.collection('users').doc(docId).update({ consent });
+
+    return res.status(200).json({ success: true, consent });
+  } catch (err) {
+    console.error('Consent update error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
+
+app.use((req, res) => {
+  res.status(404).json({ message: 'Route not found' });
+});
+
 
 app.listen(PORT, () => console.log(`✅ Backend running at http://localhost:${PORT}`));

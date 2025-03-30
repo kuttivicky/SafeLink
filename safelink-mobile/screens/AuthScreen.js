@@ -12,7 +12,7 @@ import { AuthContext } from '../AuthContext';
 
 
 const AuthScreen = ({ onLogin }) => {
-  const { setUser } = useContext(AuthContext);
+  const { user, setUser } = useContext(AuthContext);
   const [isLogin, setIsLogin] = useState(true); // toggle between login and sign up
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -58,6 +58,7 @@ const AuthScreen = ({ onLogin }) => {
   
       if (isLogin) {
         onLogin(); // Redirect to main
+        setUser(email);
       } else {
         Alert.alert('Registered!', 'Account created. Please log in.');
         setIsLogin(true);
