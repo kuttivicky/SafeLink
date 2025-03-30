@@ -4,6 +4,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const admin = require("firebase-admin");
 const axios = require("axios");
+const bcrypt = require('bcryptjs');
 
 // Initialize Firebase Admin SDK
 const serviceAccount = require("./firebase-adminsdk.json"); // Download from Firebase Console
@@ -76,31 +77,133 @@ app.post("/generate-checklist", async (req, res) => {
     }
 
     try {
-        const geminiRes = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-            {
-                contents: [
-                    {
-                        parts: [
-                            {
-                                text: `You are a medical assistant. Generate a step-by-step patient safety checklist for the following case: ${patientInfo},
-                                I want 5 points.`,
-                            },
-                        ],
-                    },
-                ],
-            }
-        );
+      const geminiRes = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+          {
+              contents: [
+                  {
+                      parts: [
+                          {
+                              text: `You are a professional medical assistant specializing in patient safety. Based on the following patient information, generate a **step-by-step safety checklist**. The checklist should:
+                              1. Contain exactly 5 actionable and concise points.
+                              2. Use professional and empathetic language.
+                              3. Focus on ensuring patient safety and well-being.
+                              4. I am the patient.
 
-        const checklist = geminiRes.data.candidates[0].content.parts[0].text
-            .split("\n")
-            .filter((line) => line.trim());
+                              Patient Information: ${patientInfo}`,
+                          },
+                      ],
+                  },
+              ],
+          }
+      );
 
-        res.json({ checklist });
-    } catch (err) {
-        console.error("Error calling Gemini API:", err.response?.data || err.message);
-        res.status(500).json({ message: "Failed to generate checklist" });
+      const checklist = geminiRes.data.candidates[0].content.parts[0].text
+          .split("\n")
+          .filter((line) => line.trim());
+
+      res.json({ checklist });
+  } catch (err) {
+      console.error("Error calling Gemini API:", err.response?.data || err.message);
+      res.status(500).json({ message: "Failed to generate checklist" });
+  }
+});
+
+
+app.post("/register", async (req, res) => {
+  try {
+    const { email, password, name, phone } = req.body;
+
+    if (!email || !password || !name || !phone) {
+      return res.status(400).json({ error: 'Email, password, and name are required.' });
     }
+
+    // Check if a user with the same email already exists
+    const userQuerySnapshot = await db.collection('users').where('email', '==', email).limit(1).get();
+    if (!userQuerySnapshot.empty) {
+      return res.status(400).json({ error: 'User with this email already exists.' });
+    }
+
+    // Hash the password before storing it
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Prepare user data
+    const userData = {
+      name,
+      email,
+      phone,
+      password: hashedPassword, // store the hashed password
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    // Save the new user to Firestore
+    const userRef = await db.collection('users').add(userData);
+    res.status(201).json({ message: 'User registered successfully.', userId: userRef.id });
+  } catch (error) {
+    console.error('Error registering user:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+    
+    // Query Firestore for the user with the matching email.
+    const userQuerySnapshot = await db
+      .collection('users')
+      .where('email', '==', email)
+      .limit(1)
+      .get();
+      
+    if (userQuerySnapshot.empty) {
+      return res.status(401).json({ error: 'Invalid credentials.' });
+    }
+    
+    const userDoc = userQuerySnapshot.docs[0];
+    const userData = userDoc.data();
+    
+    // Compare the provided password with the stored hashed password.
+    const isMatch = await bcrypt.compare(password, userData.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid credentials.' });
+    }
+    
+    // For a simple login, we just return a success message.
+    res.status(200).json({ message: 'Login successful.', userId: userDoc.id });
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/userinfo/:userid", async (req, res) => {
+  const userId = req.params.userId; // In our case, userId is the email.
+  try {
+    const userSnapshot = await db.collection('users')
+      .where('email', '==', userId)
+      .limit(1)
+      .get();
+
+    if (userSnapshot.empty) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userDoc = userSnapshot.docs[0];
+    const userData = userDoc.data();
+
+    res.status(200).json({
+      name: userData.name,
+      email: userData.email
+    });
+  } catch (error) {
+    console.error('Error retrieving user info:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.listen(PORT, () => console.log(`✅ Backend running at http://localhost:${PORT}`));
