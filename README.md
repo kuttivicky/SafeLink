@@ -20,7 +20,7 @@ SafeLink is a React Native application designed to assist medical professionals 
 ## Screenshots
 
 ### Home Screen
-![Home Screen](https://github.com/user-attachments/assets/b15288eb-e249-455d-8788-a71b640f266e/400x300)
+![Home Screen](https://github.com/user-attachments/assets/b15288eb-e249-455d-8788-a71b640f266e)[400x300]
 
 ### My Checklist Screen
 ![My Checklist Screen](https://github.com/user-attachments/assets/6aa53cd4-6daa-4f76-9e49-643cdee8eb20/400x300)
