@@ -1,6 +1,6 @@
 Here’s the complete `README.md` file in a single code block:
 
-```markdown
+```markdown```
 # SafeLink - AI-Powered Patient Safety Checklist
 
 SafeLink is a React Native application designed to assist medical professionals in generating and managing patient safety checklists. Powered by advanced AI (Gemini API), SafeLink ensures that patient safety protocols are followed with precision and empathy.
@@ -190,13 +190,6 @@ For any inquiries or feedback, feel free to reach out:
 - [Gemini API](https://generativelanguage.googleapis.com) for powering the AI-generated checklists.
 - [React Native](https://reactnative.dev) for the mobile framework.
 - [Firebase](https://firebase.google.com) for backend services.
-```
 
----
+.
 
-### How to Use This `README.md`
-1. Replace placeholders like `your-username`, `your-email@example.com`, and `your-backend-url` with your actual details.
-2. Add screenshots of your app in the "Screenshots" section.
-3. Commit the `README.md` file to your GitHub repository.
-
-This will make your project look professional and easy to understand for contributors and users. Let me know if you need further assistance! 🚀
