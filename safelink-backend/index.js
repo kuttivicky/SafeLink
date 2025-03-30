@@ -21,50 +21,56 @@ app.use(bodyParser.json());
 
 // ✅ Route to Save Checklist to Firestore
 app.post("/save-checklist", async (req, res) => {
-    const { userId, patientInfo, checklist } = req.body;
+    const { userId , patientInfo, checklist } = req.body;
 
+    console.log(userId, patientInfo, checklist)
+  
     if (!userId || !patientInfo || !checklist) {
-        return res.status(400).json({ message: "Missing required fields" });
+      return res.status(400).json({ message: "Missing required fields" });
     }
-
+  
     try {
-        await db.collection("checklist_responses").add({
-            userId,
-            patientInfo,
-            checklist,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        res.json({ message: "Checklist saved successfully!" });
+      await db.collection("checklist_responses").add({
+        userId, // Associate the checklist with the user's email
+        patientInfo,
+        checklist,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+  
+      res.json({ message: "Checklist saved successfully!" });
     } catch (err) {
-        console.error("Error saving checklist:", err);
-        res.status(500).json({ message: "Failed to save checklist" });
+      console.error("Error saving checklist:", err);
+      res.status(500).json({ message: "Failed to save checklist" });
     }
 });
 
 // ✅ Route to Get Checklists from Firestore
 app.get("/get-checklists/:userId", async (req, res) => {
     const { userId } = req.params;
-
+  
+    if (!userId) {
+      return res.status(400).json({ error: "User ID is required" });
+    }
+  
     try {
-        const snapshot = await db.collection("checklist_responses")
-                                 .where("userId", "==", userId)
-                                 .orderBy("timestamp", "desc")
-                                 .get();
-
-        if (snapshot.empty) {
-            return res.json({ checklists: [] });
-        }
-
-        const checklists = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
-
-        res.json({ checklists });
+      const snapshot = await db.collection("checklist_responses")
+                               .where("userId", "==", userId)
+                               .orderBy("timestamp", "desc")
+                               .get();
+  
+      if (snapshot.empty) {
+        return res.json({ checklists: [] });
+      }
+  
+      const checklists = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+  
+      res.json({ checklists });
     } catch (err) {
-        console.error("Error retrieving checklists:", err);
-        res.status(500).json({ message: "Failed to retrieve checklists" });
+      console.error("Error retrieving checklists:", err);
+      res.status(500).json({ message: "Failed to retrieve checklists" });
     }
 });
 
@@ -241,7 +247,7 @@ app.get('/patients/consent', async (req, res) => {
   const userData = userDoc.data();
   
   if (userData.consent) {
-    res.json({ success: true, consent: patient.consent, email: userData.email, name: userData.name, phone: userData.phone });
+    res.json({ success: true, consent: userData.consent, email: userData.email, name: userData.name, phone: userData.phone });
   } else {
     res.status(404).json({ success: false, message: 'Patient not found' });
   }
@@ -265,7 +271,16 @@ app.patch('/userinfo/:email/consent', async (req, res) => {
     const docId = snapshot.docs[0].id;
     await db.collection('users').doc(docId).update({ consent });
 
-    return res.status(200).json({ success: true, consent });
+    const updatedDoc = await db.collection('users').doc(docId).get();
+    const updatedData = updatedDoc.data();
+    
+    return res.status(200).json({
+        success: true,
+        consent: updatedData.consent,
+        email: updatedData.email,
+        phone: updatedData.phone,
+        name: updatedData.name,
+      });
   } catch (err) {
     console.error('Consent update error:', err);
     return res.status(500).json({ message: 'Internal server error' });

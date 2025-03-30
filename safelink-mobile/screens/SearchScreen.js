@@ -47,9 +47,12 @@ const SearchScreen = () => {
     try {
       const res = await fetch(`${BACKEND_URL}/patients/consent?email=${patient.userId}`);
       const data = await res.json();
-
+      console.log("selected Patients: ",selectedPatient);
+      console.log("Patient ",patient)
       if (data.success && data.consent === true) {
-        setSelectedPatient(patient);
+        setSelectedPatient({...data});
+        console.log(patient)
+        console.log(selectedPatient);
         setModalVisible(true);
       } else {
         Alert.alert('Permission Denied', 'Patient details cannot be shown without consent.');
@@ -113,8 +116,7 @@ const SearchScreen = () => {
             <Text style={styles.detail}>Name: {selectedPatient?.name}</Text>
             <Text style={styles.detail}>Phone: {selectedPatient?.phone}</Text>
             <Text style={styles.detail}>Email: {selectedPatient?.email}</Text>
-            <Text style={styles.detail}>Disease: {selectedPatient?.problem}</Text>
-            <Text style={styles.detail}>Location: {selectedPatient?.city}, {selectedPatient?.state}</Text>
+            
 
             <TouchableOpacity
               style={[styles.button, { marginTop: 20, backgroundColor: '#4e8bed' }]}

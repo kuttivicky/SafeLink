@@ -1,16 +1,23 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { SafeAreaView, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert, View } from 'react-native';
 import { BACKEND_URL } from '@env';
-import { ChecklistContext } from '../context/ChecklistContext';
+import { AuthContext } from '../AuthContext'; // Import AuthContext
 
 const AIScreen = () => {
+  const { user } = useContext(AuthContext); // Access the logged-in user's email
   const [input, setInput] = useState('');
   const [checklist, setChecklist] = useState([]);
   const [loading, setLoading] = useState(false);
-  const { addChecklist } = useContext(ChecklistContext);
 
+  // Function to generate a checklist
   const handleGenerateChecklist = async () => {
+    if (!input.trim()) {
+      Alert.alert('Error', 'Please describe the patient condition.');
+      return;
+    }
+
     setLoading(true);
+
     try {
       const response = await fetch(`${BACKEND_URL}/generate-checklist`, {
         method: 'POST',
@@ -23,7 +30,7 @@ const AIScreen = () => {
       }
 
       const data = await response.json();
-      setChecklist(data.checklist);
+      setChecklist(data.checklist); // Assuming the backend returns a `checklist` array
     } catch (err) {
       console.error('Error generating checklist:', err);
       Alert.alert('Error', 'Failed to generate checklist');
@@ -32,16 +39,48 @@ const AIScreen = () => {
     }
   };
 
-  const handleSaveChecklist = () => {
+  // Function to save the checklist
+  const handleSaveChecklist = async () => {
     if (checklist.length === 0) {
       Alert.alert('Error', 'No checklist to save');
       return;
     }
-
-    addChecklist(input, checklist);
-    Alert.alert('Success', 'Checklist saved successfully!');
-    setInput('');
-    setChecklist([]);
+  
+    try {
+      console.log('Saving checklist:', {
+        userId: user,
+        patientInfo: input,
+        checklist,
+      });
+  
+      const response = await fetch(`${BACKEND_URL}/save-checklist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user, // Use the logged-in user's email
+          patientInfo: input,
+          checklist,
+        }),
+      });
+  
+      console.log('Response status:', response.status);
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error response from backend:', errorData);
+        throw new Error(errorData.message || 'Failed to save checklist');
+      }
+  
+      const data = await response.json();
+      Alert.alert('Success', data.message);
+  
+      // Clear input and checklist after saving
+      setInput('');
+      setChecklist([]);
+    } catch (err) {
+      console.error('Error saving checklist:', err);
+      Alert.alert('Error', err.message || 'Failed to save checklist');
+    }
   };
 
   return (
@@ -63,11 +102,11 @@ const AIScreen = () => {
       <ScrollView style={styles.scrollContainer}>
         {checklist.map((item, index) => (
           <View key={index} style={styles.checklistItem}>
-          <Text style={styles.checklistText}>
-            <Text style={styles.checklistNumber}> </Text>
-            {item.replace(/\*\*(.*?)\*\*/g, '$1')}
-          </Text>
-        </View>
+            <Text style={styles.checklistText}>
+              <Text style={styles.checklistNumber}>{index + 1}. </Text>
+              {item}
+            </Text>
+          </View>
         ))}
       </ScrollView>
 
@@ -85,7 +124,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#f9fafc',
-    marginTop: 40,
   },
   title: {
     fontSize: 24,
@@ -122,11 +160,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     maxHeight: 500,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   checklistItem: {
     flexDirection: 'row',

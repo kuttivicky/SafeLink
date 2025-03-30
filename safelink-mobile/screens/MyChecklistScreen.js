@@ -1,40 +1,81 @@
-import React, { useContext } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import { ChecklistContext } from '../context/ChecklistContext';
+import React, { useState, useContext } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native'; // Import useFocusEffect
+import { AuthContext } from '../AuthContext'; // Import AuthContext
+import { BACKEND_URL } from '@env';
 
-const MyChecklistScreen = ({ navigation }) => {
-  const { checklists } = useContext(ChecklistContext);
+const MyChecklistScreen = () => {
+  const { user } = useContext(AuthContext); // Access the logged-in user's email
+  const [checklists, setChecklists] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchChecklists = async () => {
+    if (!user) return;
+
+    setLoading(true); // Show loading indicator while fetching data
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/get-checklists/${encodeURIComponent(user)}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch checklists');
+      }
+
+      const data = await response.json();
+      setChecklists(data.checklists || []);
+    } catch (error) {
+      console.error('Error fetching checklists:', error);
+      Alert.alert('Error', 'Failed to fetch checklists');
+    } finally {
+      setLoading(false); // Hide loading indicator after fetching data
+    }
+  };
+
+  // Use useFocusEffect to fetch data whenever the screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchChecklists();
+    }, [user])
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4e8bed" />
+        <Text style={styles.loadingText}>Loading Checklists...</Text>
+      </View>
+    );
+  }
+
+  if (checklists.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No checklists saved yet!</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {checklists.length === 0 ? (
-        <Text style={styles.text}>No checklists saved yet!</Text>
-      ) : (
-        <FlatList
-          data={checklists}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.checklistItem}
-              onPress={() =>
-                navigation.navigate('ChecklistDetailScreen', {
-                  patientInfo: item.patientInfo,
-                  checklist: item.checklist,
-                })
-              }
-            >
-              <Text style={styles.checklistTitle}>Patient Info:</Text>
-              <Text style={styles.checklistText} numberOfLines={2}>
-                {item.patientInfo}
+      <FlatList
+        data={checklists}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.checklistItem}>
+            <Text style={styles.checklistTitle}>Patient Info:</Text>
+            <Text style={styles.checklistText}>{item.patientInfo}</Text>
+            <Text style={styles.checklistTitle}>Checklist:</Text>
+            {item.checklist.map((point, index) => (
+              <Text key={index} style={styles.checklistPoint}>
+                - {point}
               </Text>
-              <Text style={styles.checklistTitle}>Checklist:</Text>
-              <Text style={styles.checklistText} numberOfLines={2}>
-                {item.checklist.map((point) => point.replace(/\*\*(.*?)\*\*/g, '$1')).join(', ')}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      )}
+            ))}
+          </View>
+        )}
+      />
     </View>
   );
 };
@@ -45,33 +86,47 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#f9fafc',
   },
-  text: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#555',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
     fontSize: 18,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginTop: 20,
+    color: '#555',
   },
   checklistItem: {
     backgroundColor: '#fff',
-    padding: 15,
     borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: 15,
+    marginBottom: 15,
   },
   checklistTitle: {
-    fontWeight: 'bold',
-    marginTop: 10,
     fontSize: 16,
-    color: '#2c3e50',
+    fontWeight: 'bold',
+    color: '#2980b9',
+    marginBottom: 5,
   },
   checklistText: {
     fontSize: 14,
     color: '#2d3436',
-    marginVertical: 4,
+    marginBottom: 10,
+  },
+  checklistPoint: {
+    fontSize: 14,
+    color: '#2d3436',
+    marginLeft: 10,
   },
 });
 
