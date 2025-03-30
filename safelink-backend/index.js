@@ -83,7 +83,8 @@ app.post("/generate-checklist", async (req, res) => {
                     {
                         parts: [
                             {
-                                text: `You are a medical assistant. Generate a step-by-step patient safety checklist for the following case: ${patientInfo}`,
+                                text: `You are a medical assistant. Generate a step-by-step patient safety checklist for the following case: ${patientInfo},
+                                I want 5 points.`,
                             },
                         ],
                     },
