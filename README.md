@@ -5,6 +5,10 @@ SafeLink is a React Native application designed to assist medical professionals 
 
 ---
 
+## Demo
+
+Watch on youtube - https://youtu.be/QS6O6-11tpY?si=W7QvUgphruG4EW61
+
 ## Features
 
 - **AI-Generated Checklists**: Generate professional, step-by-step patient safety checklists using the Gemini API.
